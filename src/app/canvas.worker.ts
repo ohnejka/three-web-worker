@@ -1,14 +1,13 @@
 /// <reference lib="webworker" />
 import { Handlers } from './Handlers';
 import { IMessage, ISize } from './IMessage';
-import * as THREE from '../assets/libs/three.min.js';
+import * as THREE from 'three';
 import { isNotDefined } from './utils';
 // import * as THREE from 'three';
 
 addEventListener('message', ({ data }) => {
   worker.listen(data);
 });
-
 
 class MyWorker {
   private handlers = [Handlers.Main, Handlers.Size];

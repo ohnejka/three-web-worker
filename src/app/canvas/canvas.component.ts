@@ -3,7 +3,7 @@ import { IMessage, ISize } from '../IMessage';
 import { Handlers } from '../Handlers';
 
 
-let worker;
+let worker: Worker;
 
 if (typeof Worker !== 'undefined') {
   worker = new Worker('../canvas.worker', { type: 'module' });
@@ -34,7 +34,7 @@ export class CanvasComponent implements AfterViewInit {
       type: Handlers.Main,
       data: offscreen
     }
-    this.worker.postMessage(canvasMessage, [offscreen]);
+    this.worker.postMessage(canvasMessage, [offscreen as any]);
 
     this.updateSize()
   }
