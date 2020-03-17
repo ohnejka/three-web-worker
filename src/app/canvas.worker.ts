@@ -1,9 +1,10 @@
 /// <reference lib="webworker" />
+import * as THREE from 'three';
 import { Handlers } from './Handlers';
 import { IMessage, ISize } from './IMessage';
-import * as THREE from 'three';
+// import * as THREE from '../assets/libs/three.min.js';
 import { isNotDefined } from './utils';
-// import * as THREE from 'three';
+
 
 addEventListener('message', ({ data }) => {
   worker.listen(data);
