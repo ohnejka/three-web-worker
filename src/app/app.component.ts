@@ -42,15 +42,14 @@ export class AppComponent implements OnInit, OnDestroy {
       this.pullGyroValues();
     }
 
-    // testing close()
+    // тестирование метода close()
     timer(5000).subscribe(() => {
       this.gyro.close(AppComponent);
-
     })
   }
 
   public requestListenIOS() {
-    this.gyro.listen({ isIos: true }, AppComponent);
+    this.orientation = this.gyro.listen({ isIos: true }, AppComponent);
     this.pullGyroValues();
 
     this.message = 'checked!'

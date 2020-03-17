@@ -29,6 +29,7 @@ export class GyroService implements OnDestroy {
   private observables: Observable<IOrientation>[] = [];
 
   // перепроверь, что нужен фактори, я в примерах просто renderer везде видел
+  // Jenya:  в сервис только через фактори получилось заинджектить.
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
 
@@ -64,6 +65,7 @@ export class GyroService implements OnDestroy {
   }
 
   public close(component: any): void {
+
     const index = this.subscribed.indexOf(component);
 
     if (index < 0) {
@@ -84,6 +86,7 @@ export class GyroService implements OnDestroy {
       return;
 
     this.destroyListeners();
+    console.log('DELETED all listeners in gyro')
   }
 
   private _listen(): void {
