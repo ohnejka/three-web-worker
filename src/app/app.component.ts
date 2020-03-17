@@ -26,7 +26,7 @@ export class AppComponent implements OnInit {
   public accessOrientaionGranted = false;
   // public accessMotionGranted = false;
 
-  private orientation: Subject<IOrientation>;
+  private orientation: BehaviorSubject<IOrientation>;
 
 
   public isIOS = false;
@@ -48,7 +48,7 @@ export class AppComponent implements OnInit {
 
     console.log('ios ', this.isIOS);
 
-    this.orientation = new Subject();
+    this.orientation = new BehaviorSubject({alpha: 0, beta:0, gamma: 0});
   }
 
   ngOnInit(): void {
