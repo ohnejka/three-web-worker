@@ -36,6 +36,9 @@ export class AppComponent implements OnDestroy {
 
     if (!this.isIOS) {
       this.message = 'android no need to check';
+
+      // подписки и активации инициализации лучше ставить в OnInit
+      // конструктор он больше для дефолтных значений.
       this.orientation = this.gyro.listen({ isIos: false });
       this.pullGyroValues();
     }

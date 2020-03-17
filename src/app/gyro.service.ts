@@ -25,10 +25,11 @@ export class GyroService {
   private motionListener: () => void;
   private orientationListener: () => void;
 
-
+  // перепроверь, что нужен фактори, я в примерах просто renderer везде видел
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
 
+    // кул! как раз хотел предложить сделать адекватный Subject, не пустой, а со значением
     this.orientation = new BehaviorSubject({ alpha: 0, beta: 0, gamma: 0 });
     this.orientation$ = this.orientation.asObservable();
   }
@@ -42,10 +43,10 @@ export class GyroService {
   public listen(device: IDeviceInfo): Observable<IOrientation> {
 
     if (device.isIos) {
+      // permission можно запрашивать только по клику/тапу
+      // надо помнить об этом
       this.requestPermissionsIOS();
-    }
-
-    else {
+    } else {
       this._listen();
       this._activated = true;
     }
@@ -65,6 +66,7 @@ export class GyroService {
 
   private listenToDeviceMotion(): void {
     this.motionListener = this.renderer.listen('window', 'devicemotion', (event: DeviceMotionEvent) => {
+      // здесь в orientation записываются motion данные
       this.orientation.next({
         alpha: this.round(event.rotationRate.alpha),
         beta: this.round(event.rotationRate.beta),
@@ -83,10 +85,11 @@ export class GyroService {
     })
   }
 
-  private round( num: number): number {
-    if(isNotDefined(num))
+  private round(num: number): number {
+    if (isNotDefined(num))
       return;
 
+    // ну ты сама понимаешь
     return parseFloat(num.toFixed(2));
   }
 
@@ -129,6 +132,9 @@ export class GyroService {
 
 
   ngOnDestroy(): void {
+
+    // удивительно, но у сервисов есть OnDestroy, только непонятно когда он срабатывает
+    // с ними не всё так просто как с компонентами
 
     if (isDefined(this.orientationListener))
       this.orientationListener();
