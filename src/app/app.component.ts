@@ -86,6 +86,8 @@ export class AppComponent implements OnInit {
         gamma: event.gamma
       }
     );
+
+    this.changeDetector.detectChanges();
   }
 
 
