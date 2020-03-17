@@ -9,7 +9,7 @@ import { Observable, Subscription, timer } from 'rxjs';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements OnDestroy {
+export class AppComponent implements OnInit, OnDestroy {
   // @ViewChild('canvas') public canvas: HTMLCanvasElement;
 
   public alpha = 0;
@@ -23,23 +23,27 @@ export class AppComponent implements OnDestroy {
   public orientation: Observable<IOrientation>;
 
   constructor(
-    deviceService: DeviceDetectorService,
-    private gyro: GyroService) {
+    private deviceService: DeviceDetectorService,
+    private gyro: GyroService) { }
 
-    if (!deviceService.isMobile()) {
+  ngOnInit(): void {
+
+    if (!this.deviceService.isMobile()) {
       console.log('not mobile')
       // return;
     }
 
-    this.isIOS = deviceService.isIOS();
+    this.isIOS = this.deviceService.isIOS();
 
     if (!this.isIOS) {
       this.message = 'android no need to check';
       this.orientation = this.gyro.listen({ isIos: false }, AppComponent);
+
       this.pullGyroValues();
     }
 
-    timer(5000).subscribe( () => {
+    // testing close()
+    timer(5000).subscribe(() => {
       this.gyro.close(AppComponent);
 
     })

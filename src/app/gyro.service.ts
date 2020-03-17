@@ -28,6 +28,7 @@ export class GyroService implements OnDestroy {
   private subscribed: any[] = [];
   private observables: Observable<IOrientation>[] = [];
 
+  // перепроверь, что нужен фактори, я в примерах просто renderer везде видел
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
 
@@ -46,6 +47,8 @@ export class GyroService implements OnDestroy {
       return;
 
     if (device.isIos) {
+      // permission можно запрашивать только по клику/тапу
+      // надо помнить об этом
       this.requestPermissionsIOS();
     } else {
       this._listen();
@@ -95,6 +98,7 @@ export class GyroService implements OnDestroy {
 
   private listenToDeviceMotion(): void {
     this.motionListener = this.renderer.listen('window', 'devicemotion', (event: DeviceMotionEvent) => {
+      // здесь в orientation записываются motion данные
       this.orientation.next({
         alpha: this.roundToHundredth(event.rotationRate.alpha),
         beta: this.roundToHundredth(event.rotationRate.beta),
@@ -112,6 +116,7 @@ export class GyroService implements OnDestroy {
       })
     })
   }
+
 
   private requestDeviceMotionIOS(): void {
     if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
@@ -156,9 +161,8 @@ export class GyroService implements OnDestroy {
     return Math.round(number * Math.pow(10, digitsAfterPoint)) / Math.pow(10, digitsAfterPoint)
   }
 
-
   private destroyListeners(): void {
-    if (isDefined(this.orientationListener))
+   if (isDefined(this.orientationListener))
       this.orientationListener();
 
     if (isDefined(this.motionListener))
