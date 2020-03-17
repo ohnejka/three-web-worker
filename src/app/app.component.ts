@@ -1,6 +1,7 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, HostListener, OnInit, OnDestroy, ChangeDetectorRef, Renderer2 } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { DeviceDetectorService } from './device-detector-service';
-import { isDefined } from '@angular/compiler/src/util';
+import { GyroService, IOrientation } from './gyro.service';
+import { Observable, Subscription } from 'rxjs';
 
 
 @Component({
@@ -8,7 +9,7 @@ import { isDefined } from '@angular/compiler/src/util';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements OnInit , OnDestroy{
+export class AppComponent implements OnDestroy {
   // @ViewChild('canvas') public canvas: HTMLCanvasElement;
 
   public alpha = 0;
@@ -19,15 +20,15 @@ export class AppComponent implements OnInit , OnDestroy{
   public isIOS = false;
   public overlayClicked = false;
 
-  private motionListener: () => void;
-  private orientationListener: () => void;
+  public orientation: Observable<IOrientation>;
+  private subscription: Subscription;
 
   constructor(
     deviceService: DeviceDetectorService,
-    private changeDetector: ChangeDetectorRef,
-    private renderer: Renderer2) {
+    private gyro: GyroService) {
+
     if (!deviceService.isMobile()) {
-      console.log('not mobile, return')
+      console.log('not mobile')
       // return;
     }
 
@@ -35,81 +36,32 @@ export class AppComponent implements OnInit , OnDestroy{
 
     if (!this.isIOS) {
       this.message = 'android no need to check';
-      this.listenToDeviceMotion();
-      this.listenToDeviceOrientation();
+      this.orientation = this.gyro.listen({ isIos: false });
+      this.pullGyroValues();
     }
   }
 
+  public requestListenIOS() {
+    this.orientation = this.gyro.listen({ isIos: true });
+    this.pullGyroValues();
 
-  ngOnInit(): void { }
-
-  public requestPermissionsIOS() {
-    this.requestDeviceMotionIOS();
-    this.requestDeviceOrientationIOS();
     this.message = 'checked!'
     this.overlayClicked = true;
   }
 
-
-   // MOTION
-  private requestDeviceMotionIOS() {
-    if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
-      (DeviceMotionEvent as any).requestPermission()
-        .then(permissionState => {
-          if (permissionState === 'granted') {
-            this.listenToDeviceMotion();
-          }
-        })
-        .catch(console.error);
-    } else {
-
-      // handle regular non iOSdevices
-      this.listenToDeviceMotion();
-    }
-  }
-
-  private listenToDeviceMotion(): void {
-    this.motionListener = this.renderer.listen('window', 'devicemotion', (event: DeviceMotionEvent) => {
-      console.log('motionListener: ', event);
-      this.alpha = event.rotationRate.alpha;
-      this.beta = event.rotationRate.beta;
-      this.gamma = event.rotationRate.gamma;
-      this.changeDetector.detectChanges();
-    })
-  }
-
-  // ORIENTATION
-  private requestDeviceOrientationIOS() {
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      (DeviceOrientationEvent as any).requestPermission()
-        .then(permissionState => {
-          if (permissionState === 'granted') {
-            this.listenToDeviceOrientation();
-          }
-        })
-        .catch(console.error);
-    } else {
-      // handle regular non iOSdevices
-      this.listenToDeviceOrientation();
-    }
-  }
-
-  private listenToDeviceOrientation(): void {
-    this.orientationListener = this.renderer.listen('window', 'deviceorientation', (event: DeviceOrientationEvent) => {
-      this.alpha = event.alpha;
-      this.beta = event.beta;
-      this.gamma = event.gamma;
-      this.changeDetector.detectChanges();
-    })
+  private pullGyroValues(): void {
+    this.subscription = this.orientation.subscribe(
+      ori => {
+        this.alpha = ori.alpha;
+        this.beta = ori.beta;
+        this.gamma = ori.gamma;
+      }
+    )
   }
 
   ngOnDestroy(): void {
-
-    if(isDefined(this.orientationListener))
-      this.orientationListener();
-
-    if(isDefined(this.motionListener))
-    this.motionListener();
+    this.subscription.unsubscribe();
+    this.subscription = undefined;
   }
 
 }
