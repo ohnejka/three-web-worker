@@ -1,21 +1,14 @@
-import { Component, ViewChild, ElementRef, AfterViewInit, HostListener, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, ViewChild, ElementRef, AfterViewInit, HostListener, OnInit, OnDestroy, ChangeDetectorRef, Renderer2 } from '@angular/core';
 import { DeviceDetectorService } from './device-detector-service';
-import { of, BehaviorSubject, Observable, Subject } from 'rxjs';
-import { debounceTime } from 'rxjs/operators';
+import { isDefined } from '@angular/compiler/src/util';
 
-
-interface IOrientation {
-  alpha: number;
-  beta: number;
-  gamma: number;
-}
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit , OnDestroy{
   // @ViewChild('canvas') public canvas: HTMLCanvasElement;
 
   public alpha = 0;
@@ -23,17 +16,16 @@ export class AppComponent implements OnInit {
   public gamma = 0;
   public message = ``;
 
-  public accessOrientaionGranted = false;
-  public accessMotionGranted = false;
-
-  private orientation: BehaviorSubject<IOrientation>;
-
-
-
   public isIOS = false;
   public overlayClicked = false;
 
-  constructor(deviceService: DeviceDetectorService, private changeDetector: ChangeDetectorRef) {
+  private motionListener: () => void;
+  private orientationListener: () => void;
+
+  constructor(
+    deviceService: DeviceDetectorService,
+    private changeDetector: ChangeDetectorRef,
+    private renderer: Renderer2) {
     if (!deviceService.isMobile()) {
       console.log('not mobile, return')
       // return;
@@ -42,102 +34,82 @@ export class AppComponent implements OnInit {
     this.isIOS = deviceService.isIOS();
 
     if (!this.isIOS) {
-      this.accessOrientaionGranted = true;
-      this.accessMotionGranted = true;
-      this.message = 'android no need to check'
+      this.message = 'android no need to check';
+      this.listenToDeviceMotion();
+      this.listenToDeviceOrientation();
     }
-
-    console.log('ios ', this.isIOS);
-
-    this.orientation = new BehaviorSubject({alpha: 0, beta:0, gamma: 0});
   }
 
-  ngOnInit(): void {
 
-    this.orientation.asObservable().pipe(
-      debounceTime(300)
-    )
-      .subscribe((orientation) => {
-        this.alpha = orientation.alpha;
-        this.beta = orientation.beta;
-        this.gamma = orientation.gamma;
-
-      });
-  }
+  ngOnInit(): void { }
 
   public requestPermissionsIOS() {
-    this.requestDeviceOrientationIOS();
-    // нужно ли моушн?
     this.requestDeviceMotionIOS();
-    this.message = 'checked ios!'
+    this.requestDeviceOrientationIOS();
+    this.message = 'checked!'
     this.overlayClicked = true;
   }
 
 
-  @HostListener('window: deviceorientation', ['$event'])
-  onDeviceRotation(event: DeviceOrientationEvent) {
-
-    if (!this.accessOrientaionGranted)
-      return;
-
-    this.orientation.next(
-      {
-        alpha: event.alpha,
-        beta: event.beta,
-        gamma: event.gamma
-      }
-    );
-
-    this.changeDetector.detectChanges();
-  }
-
-
-  private requestDeviceOrientationIOS(): void {
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      (DeviceOrientationEvent as any).requestPermission()
-        .then(permissionState => {
-          if (permissionState === 'granted') {
-            this.accessOrientaionGranted = true;
-          }
-        })
-        .catch(console.error);
-    } else {
-      // handle regular non iOS 13+ devices
-      this.accessOrientaionGranted = true;
-    }
-  }
-
-  @HostListener('window: devicemotion', ['$event'])
-  onDeviceMotion(event: DeviceMotionEvent) {
-
-    if (!this.accessMotionGranted)
-    return;
-
-    this.orientation.next(
-      {
-        alpha: event.rotationRate.alpha,
-        beta: event.rotationRate.beta,
-        gamma: event.rotationRate.gamma
-      }
-    );
-
-    this.changeDetector.detectChanges();
-}
-
+   // MOTION
   private requestDeviceMotionIOS() {
     if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
       (DeviceMotionEvent as any).requestPermission()
         .then(permissionState => {
           if (permissionState === 'granted') {
-            this.accessMotionGranted = true;
+            this.listenToDeviceMotion();
           }
         })
         .catch(console.error);
     } else {
 
-      // handle regular non iOS 13+ devices
-      this.accessMotionGranted = true;
+      // handle regular non iOSdevices
+      this.listenToDeviceMotion();
     }
+  }
+
+  private listenToDeviceMotion(): void {
+    this.motionListener = this.renderer.listen('window', 'devicemotion', (event: DeviceMotionEvent) => {
+      console.log('motionListener: ', event);
+      this.alpha = event.rotationRate.alpha;
+      this.beta = event.rotationRate.beta;
+      this.gamma = event.rotationRate.gamma;
+      this.changeDetector.detectChanges();
+    })
+  }
+
+  // ORIENTATION
+  private requestDeviceOrientationIOS() {
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      (DeviceOrientationEvent as any).requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            this.listenToDeviceOrientation();
+          }
+        })
+        .catch(console.error);
+    } else {
+      // handle regular non iOSdevices
+      this.listenToDeviceOrientation();
+    }
+  }
+
+  private listenToDeviceOrientation(): void {
+    this.orientationListener = this.renderer.listen('window', 'deviceorientation', (event: DeviceOrientationEvent) => {
+      this.alpha = event.alpha;
+      this.beta = event.beta;
+      this.gamma = event.gamma;
+      this.changeDetector.detectChanges();
+    })
+  }
+
+  ngOnDestroy(): void {
+
+    if(isDefined(this.orientationListener))
+      this.orientationListener();
+
+    if(isDefined(this.motionListener))
+    this.motionListener();
   }
 
 }
