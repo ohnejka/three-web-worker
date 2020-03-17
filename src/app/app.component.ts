@@ -24,9 +24,10 @@ export class AppComponent implements OnInit {
   public message = ``;
 
   public accessOrientaionGranted = false;
-  // public accessMotionGranted = false;
+  public accessMotionGranted = false;
 
   private orientation: BehaviorSubject<IOrientation>;
+
 
 
   public isIOS = false;
@@ -42,7 +43,7 @@ export class AppComponent implements OnInit {
 
     if (!this.isIOS) {
       this.accessOrientaionGranted = true;
-      // this.accessMotionGranted = true;
+      this.accessMotionGranted = true;
       this.message = 'android no need to check'
     }
 
@@ -67,8 +68,8 @@ export class AppComponent implements OnInit {
   public requestPermissionsIOS() {
     this.requestDeviceOrientationIOS();
     // нужно ли моушн?
-    // this.requestDeviceMotionIOS();
-    this.message = 'checked ios 13+!'
+    this.requestDeviceMotionIOS();
+    this.message = 'checked ios!'
     this.overlayClicked = true;
   }
 
@@ -106,24 +107,37 @@ export class AppComponent implements OnInit {
     }
   }
 
-  // @HostListener('window: devicemotion', ['$event'])
-  // onDeviceMotion(event: DeviceMotionEvent) {
-// }
+  @HostListener('window: devicemotion', ['$event'])
+  onDeviceMotion(event: DeviceMotionEvent) {
 
-  // private requestDeviceMotionIOS() {
-  //   if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
-  //     (DeviceMotionEvent as any).requestPermission()
-  //       .then(permissionState => {
-  //         if (permissionState === 'granted') {
-  //           this.accessMotionGranted = true;
-  //         }
-  //       })
-  //       .catch(console.error);
-  //   } else {
+    if (!this.accessMotionGranted)
+    return;
 
-  //     // handle regular non iOS 13+ devices
-  //     this.accessMotionGranted = true;
-  //   }
-  // }
+    this.orientation.next(
+      {
+        alpha: event.rotationRate.alpha,
+        beta: event.rotationRate.beta,
+        gamma: event.rotationRate.gamma
+      }
+    );
+
+    this.changeDetector.detectChanges();
+}
+
+  private requestDeviceMotionIOS() {
+    if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
+      (DeviceMotionEvent as any).requestPermission()
+        .then(permissionState => {
+          if (permissionState === 'granted') {
+            this.accessMotionGranted = true;
+          }
+        })
+        .catch(console.error);
+    } else {
+
+      // handle regular non iOS 13+ devices
+      this.accessMotionGranted = true;
+    }
+  }
 
 }
