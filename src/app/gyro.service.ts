@@ -1,5 +1,5 @@
 import { Injectable, Renderer2, RendererFactory2 } from '@angular/core';
-import { isDefined } from './utils';
+import { isDefined, isNotDefined } from './utils';
 import { BehaviorSubject, Observable } from 'rxjs';
 
 
@@ -66,24 +66,29 @@ export class GyroService {
   private listenToDeviceMotion(): void {
     this.motionListener = this.renderer.listen('window', 'devicemotion', (event: DeviceMotionEvent) => {
       this.orientation.next({
-        alpha: event.rotationRate.alpha,
-        beta: event.rotationRate.beta,
-        gamma: event.rotationRate.gamma
+        alpha: this.round(event.rotationRate.alpha),
+        beta: this.round(event.rotationRate.beta),
+        gamma: this.round(event.rotationRate.gamma)
       });
     })
   }
 
-
   private listenToDeviceOrientation(): void {
     this.orientationListener = this.renderer.listen('window', 'deviceorientation', (event: DeviceOrientationEvent) => {
       this.orientation.next({
-        alpha: event.alpha,
-        beta: event.beta,
-        gamma: event.gamma
+        alpha: this.round(event.alpha),
+        beta: this.round(event.beta),
+        gamma: this.round(event.gamma)
       })
     })
   }
 
+  private round( num: number): number {
+    if(isNotDefined(num))
+      return;
+
+    return parseFloat(num.toFixed(2));
+  }
 
 
   // запросы прав на ios
