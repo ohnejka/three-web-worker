@@ -1,6 +1,7 @@
-import { Injectable, Renderer2, RendererFactory2 } from '@angular/core';
+import { Injectable, Renderer2, RendererFactory2, OnDestroy, Component, ComponentDecorator, ComponentRef } from '@angular/core';
 import { isDefined, isNotDefined } from './utils';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 
 export interface IOrientation {
@@ -16,21 +17,21 @@ export interface IDeviceInfo {
 @Injectable({
   providedIn: 'root'
 })
-export class GyroService {
+export class GyroService implements OnDestroy {
 
-  public orientation$: Observable<IOrientation>;
   private orientation: BehaviorSubject<IOrientation>;
 
   private renderer: Renderer2;
   private motionListener: () => void;
   private orientationListener: () => void;
 
+  private subscribed: any[] = [];
+  private observables: Observable<IOrientation>[] = [];
 
   constructor(rendererFactory: RendererFactory2) {
     this.renderer = rendererFactory.createRenderer(null, null);
 
     this.orientation = new BehaviorSubject({ alpha: 0, beta: 0, gamma: 0 });
-    this.orientation$ = this.orientation.asObservable();
   }
 
   public get activated() {
@@ -39,18 +40,47 @@ export class GyroService {
 
   private _activated = false;
 
-  public listen(device: IDeviceInfo): Observable<IOrientation> {
+  public listen(device: IDeviceInfo, component: any): Observable<IOrientation> {
+
+    if (this.subscribed.indexOf(component) > -1)
+      return;
 
     if (device.isIos) {
       this.requestPermissionsIOS();
-    }
-
-    else {
+    } else {
       this._listen();
       this._activated = true;
     }
 
-    return this.orientation$;
+    const copy$ = this.orientation.asObservable();
+
+    this.subscribed.push(component);
+    this.observables.push(copy$);
+
+    return copy$;
+  }
+
+  public close(component: any): void {
+    const index = this.subscribed.indexOf(component);
+
+    if (index < 0) {
+      console.warn('trying to delete unknown');
+      return;
+    }
+
+    this.subscribed.splice(index, 1);
+
+    const obs = this.observables.splice(index, 1);
+    const observable = obs[0];
+
+    const end$ = new Subject<any>();
+    observable.pipe(takeUntil(end$));
+    end$.next();
+
+    if (this.subscribed.length > 0)
+      return;
+
+    this.destroyListeners();
   }
 
   private _listen(): void {
@@ -66,9 +96,9 @@ export class GyroService {
   private listenToDeviceMotion(): void {
     this.motionListener = this.renderer.listen('window', 'devicemotion', (event: DeviceMotionEvent) => {
       this.orientation.next({
-        alpha: this.round(event.rotationRate.alpha),
-        beta: this.round(event.rotationRate.beta),
-        gamma: this.round(event.rotationRate.gamma)
+        alpha: this.roundToHundredth(event.rotationRate.alpha),
+        beta: this.roundToHundredth(event.rotationRate.beta),
+        gamma: this.roundToHundredth(event.rotationRate.gamma)
       });
     })
   }
@@ -76,22 +106,13 @@ export class GyroService {
   private listenToDeviceOrientation(): void {
     this.orientationListener = this.renderer.listen('window', 'deviceorientation', (event: DeviceOrientationEvent) => {
       this.orientation.next({
-        alpha: this.round(event.alpha),
-        beta: this.round(event.beta),
-        gamma: this.round(event.gamma)
+        alpha: this.roundToHundredth(event.alpha),
+        beta: this.roundToHundredth(event.beta),
+        gamma: this.roundToHundredth(event.gamma)
       })
     })
   }
 
-  private round( num: number): number {
-    if(isNotDefined(num))
-      return;
-
-    return parseFloat(num.toFixed(2));
-  }
-
-
-  // запросы прав на ios
   private requestDeviceMotionIOS(): void {
     if (typeof (DeviceMotionEvent as any).requestPermission === 'function') {
       (DeviceMotionEvent as any).requestPermission()
@@ -127,14 +148,26 @@ export class GyroService {
     }
   }
 
+  private roundToHundredth(number: number): number {
+    if (isNotDefined(number))
+      return;
 
-  ngOnDestroy(): void {
+    const digitsAfterPoint = 2;
+    return Math.round(number * Math.pow(10, digitsAfterPoint)) / Math.pow(10, digitsAfterPoint)
+  }
 
+
+  private destroyListeners(): void {
     if (isDefined(this.orientationListener))
       this.orientationListener();
 
     if (isDefined(this.motionListener))
       this.motionListener();
+  }
+
+
+  ngOnDestroy(): void {
+    this.destroyListeners();
   }
 
 }

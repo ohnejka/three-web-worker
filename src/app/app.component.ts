@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { DeviceDetectorService } from './device-detector-service';
 import { GyroService, IOrientation } from './gyro.service';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, timer } from 'rxjs';
 
 
 @Component({
@@ -21,7 +21,6 @@ export class AppComponent implements OnDestroy {
   public overlayClicked = false;
 
   public orientation: Observable<IOrientation>;
-  private subscription: Subscription;
 
   constructor(
     deviceService: DeviceDetectorService,
@@ -36,13 +35,18 @@ export class AppComponent implements OnDestroy {
 
     if (!this.isIOS) {
       this.message = 'android no need to check';
-      this.orientation = this.gyro.listen({ isIos: false });
+      this.orientation = this.gyro.listen({ isIos: false }, AppComponent);
       this.pullGyroValues();
     }
+
+    timer(5000).subscribe( () => {
+      this.gyro.close(AppComponent);
+
+    })
   }
 
   public requestListenIOS() {
-    this.orientation = this.gyro.listen({ isIos: true });
+    this.gyro.listen({ isIos: true }, AppComponent);
     this.pullGyroValues();
 
     this.message = 'checked!'
@@ -50,7 +54,7 @@ export class AppComponent implements OnDestroy {
   }
 
   private pullGyroValues(): void {
-    this.subscription = this.orientation.subscribe(
+    this.orientation.subscribe(
       ori => {
         this.alpha = ori.alpha;
         this.beta = ori.beta;
@@ -60,8 +64,7 @@ export class AppComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.subscription.unsubscribe();
-    this.subscription = undefined;
+    this.gyro.close(AppComponent);
   }
 
 }
